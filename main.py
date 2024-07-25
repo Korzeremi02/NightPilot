@@ -120,7 +120,10 @@ class SleepTrackerApp:
         self.addDataButton = tk.Button(self.root, text="Ajouter Données de Sommeil pour aujourd'hui", command=self.addData)
         self.addDataButton.pack(pady=5)
 
-        self.showChartButton = tk.Button(self.root, text="Afficher Graphique", command=self.showChart)
+        self.showStatsButton = tk.Button(self.root, text="Afficher Statistiques", command=self.showStats)
+        self.showStatsButton.pack(pady=5)
+
+        self.showChartButton = tk.Button(self.root, text="Afficher Graphique Tracking", command=self.showChart)
         self.showChartButton.pack(pady=5)
 
         self.quitButton = tk.Button(self.root, text="Quitter", command=self.root.quit)
@@ -130,7 +133,12 @@ class SleepTrackerApp:
         setCurrentNightData(self.savedSleepDurations, self.dates)
         debtResult, message = calculateSleepDebt(self.recommendedDuration, self.savedSleepDurations)
         messagebox.showinfo("Dette de Sommeil",
-                            f"Dette de sommeil à rattraper : {debtResult} heures de sommeil\n{message}")
+                            f"{message}")
+
+    def showStats(self):
+        debtResult, message = calculateSleepDebt(self.recommendedDuration, self.savedSleepDurations)
+        messagebox.showinfo("Dette de Sommeil",
+                            f"{debtResult} heures de sommeil à rattraper")
 
     def showChart(self):
         fig = showNightsCharts(self.savedSleepDurations, self.dates, self.recommendedDuration, self.age, self.name)
