@@ -1,5 +1,5 @@
 # NightPilot
-A python program to calculate night debt
+A program to calculate night debt and track night datas
 
 To build the .exe :
 1. Copy text in the .psl script
