@@ -1,4 +1,8 @@
+import tkinter as tk
+from tkinter import messagebox
+from tkinter import simpledialog
 import matplotlib.pyplot as plt
+from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
 import pickle
 import os
 from datetime import datetime
@@ -16,25 +20,22 @@ def saveData(recommendedDuration, age, name, savedSleepDurations, dates):
         }
         pickle.dump(data, file)
 
+
 def loadData():
     if os.path.exists(SAVE_FILE):
         with open(SAVE_FILE, 'rb') as file:
             return pickle.load(file)
     return None
 
-def setUserProfile(existing_data=None):
+
+def setUserProfile():
+    existing_data = loadData()
     if existing_data:
-        age = existing_data['age']
-        name = existing_data['name']
-        recommendedDuration = existing_data['recommendedDuration']
-        savedSleepDurations = existing_data['savedSleepDurations']
-        dates = existing_data['dates']
-        print(f"Les données existantes : \nNom : {name}\nÂge : {age}\nObjectif recommandé : {recommendedDuration}h")
-        return recommendedDuration, age, name, savedSleepDurations, dates
+        return existing_data['recommendedDuration'], existing_data['age'], existing_data['name'], existing_data[
+            'savedSleepDurations'], existing_data['dates']
     else:
-        print('\n' * 1000)
-        age = float(input("Âge (0/120) ? > "))
-        name = input("Nom ? > ")
+        age = simpledialog.askfloat("Âge", "Âge (0/120) ?")
+        name = simpledialog.askstring("Nom", "Nom ?")
         ageArray = {
             (0, 0.2): 15,
             (0.3, 0.9): 13,
@@ -50,25 +51,21 @@ def setUserProfile(existing_data=None):
             if minAge <= age <= maxAge:
                 recommendedDuration = duration
                 break
-        print('\n' * 1000)
-        preferenceMsg = input(f"{name}, Une marge peut être mise en place si vous souhaitez avoir un objectif plus haut ou plus bas que la norme pour votre âge. Actuellement l'objectif est de {recommendedDuration}h. Appliquer une marge ? (o/n) > ")
-        if preferenceMsg == 'n':
-            saveData(recommendedDuration, age, name, [], [])
-            return recommendedDuration, age, name, [], []
-        preference = input("Objectif plus haut ou plus bas ? (h/b) > ")
-        if preference == 'h':
-            recommendedDuration += 1
-            print(f"Objectif augmenté à {recommendedDuration}h.")
-        elif preference == 'b':
-            recommendedDuration -= 1
-            print(f"Objectif diminué à {recommendedDuration}h.")
+        preferenceMsg = messagebox.askyesno("Préférence",
+                                            f"{name}, Une marge peut être mise en place si vous souhaitez avoir un objectif plus haut ou plus bas que la norme pour votre âge. Actuellement l'objectif est de {recommendedDuration}h. Appliquer une marge ?")
+        if preferenceMsg:
+            preference = simpledialog.askstring("Préférence", "Objectif plus haut ou plus bas ? (h/b)")
+            if preference == 'h':
+                recommendedDuration += 1
+            elif preference == 'b':
+                recommendedDuration -= 1
         saveData(recommendedDuration, age, name, [], [])
         return recommendedDuration, age, name, [], []
 
+
 def setCurrentNightData(savedSleepDurations, dates):
-    print('\n' * 1000)
-    inBed = int(input("Heure de coucher (0-23) ? > "))
-    outBed = int(input("Heure de levée (0-23) ? > "))
+    inBed = simpledialog.askinteger("Heure de coucher", "Heure de coucher (0-23) ?")
+    outBed = simpledialog.askinteger("Heure de levée", "Heure de levée (0-23) ?")
     if outBed < inBed:
         currentNightDuration = (24 - inBed) + outBed
     else:
@@ -83,35 +80,68 @@ def setCurrentNightData(savedSleepDurations, dates):
         saveData(recommendedDuration, age, name, savedSleepDurations, dates)
 
 def calculateSleepDebt(recommendedDuration, savedSleepDurations):
-    print('\n' * 1000)
     totalDebt = 0
     lastNightDuration = savedSleepDurations[-1] if savedSleepDurations else 0
     if lastNightDuration < recommendedDuration:
-        print(f"{lastNightDuration}h était votre dernière durée de sommeil. Vous n'avez pas atteint l'objectif journalier recommandé ({recommendedDuration}h). Veillez à être plus régulier dans vos nuits.")
+        message = f"{lastNightDuration}h était votre dernière durée de sommeil. Vous n'avez pas atteint l'objectif journalier recommandé ({recommendedDuration}h)."
     else:
-        print(f"{lastNightDuration}h était votre dernière durée de sommeil. Vous avez atteint l'objectif recommandé ({recommendedDuration}h). Continuez à être régulier dans vos nuits !")
+        message = f"{lastNightDuration}h était votre dernière durée de sommeil. Vous avez atteint l'objectif recommandé ({recommendedDuration}h)."
     for savedSleepDuration in savedSleepDurations:
         dailyDebt = recommendedDuration - savedSleepDuration
         totalDebt += dailyDebt
-    return totalDebt
+    return totalDebt, message
 
 def showNightsCharts(savedSleepDurations, dates, recommendedDuration, age, name):
-    plt.figure(figsize=(12, 6))
-    plt.plot(dates, savedSleepDurations, label='Durée de sommeil', marker='o')
-    plt.plot(dates, [recommendedDuration] * len(dates), label='Objectif recommandé', linestyle='--')
+    fig, ax = plt.subplots(figsize=(12, 6))
+    ax.plot(dates, savedSleepDurations, label='Durée de sommeil', marker='o')
+    ax.plot(dates, [recommendedDuration] * len(dates), label='Objectif recommandé', linestyle='--')
     debt = [recommendedDuration - duration for duration in savedSleepDurations]
-    plt.plot(dates, debt, label='Dette de sommeil', linestyle='--', color='red')
-    plt.xlabel('Date')
-    plt.ylabel('Heures')
-    plt.title(f"Données de sommeil pour {name} ({int(age)} ans)")
+    ax.plot(dates, debt, label='Dette de sommeil', linestyle='--', color='red')
+    ax.set_xlabel('Date')
+    ax.set_ylabel('Heures')
+    ax.set_title(f"Données de sommeil pour {name} ({int(age)} ans)")
+    ax.legend()
     plt.xticks(rotation=45)
-    plt.legend()
     plt.tight_layout()
-    plt.show()
+    return fig
 
-existing_data = loadData()
-recommendedDuration, age, name, savedSleepDurations, dates = setUserProfile(existing_data)
-setCurrentNightData(savedSleepDurations, dates)
-debtResult = calculateSleepDebt(recommendedDuration, savedSleepDurations)
-showNightsCharts(savedSleepDurations, dates, recommendedDuration, age, name)
-print(f"Dette de sommeil à rattraper : {debtResult} heures de sommeil\n(La dette de sommeil est un indicateur et ne doit pas être appliquée. Il est important de dormir suffisamment pour être en forme et de respecter les recommandations médicales.)")
+class SleepTrackerApp:
+    def __init__(self, root):
+        self.root = root
+        self.root.title("Sleep Tracker")
+        self.recommendedDuration, self.age, self.name, self.savedSleepDurations, self.dates = setUserProfile()
+        self.setupUI()
+
+    def setupUI(self):
+        self.label = tk.Label(self.root,
+                              text=f"Bonjour {self.name}, votre objectif de sommeil est de {self.recommendedDuration} heures par nuit.")
+        self.label.pack(pady=10)
+
+        self.addDataButton = tk.Button(self.root, text="Ajouter Données de Sommeil pour aujourd'hui", command=self.addData)
+        self.addDataButton.pack(pady=5)
+
+        self.showChartButton = tk.Button(self.root, text="Afficher Graphique", command=self.showChart)
+        self.showChartButton.pack(pady=5)
+
+        self.quitButton = tk.Button(self.root, text="Quitter", command=self.root.quit)
+        self.quitButton.pack(pady=5)
+
+    def addData(self):
+        setCurrentNightData(self.savedSleepDurations, self.dates)
+        debtResult, message = calculateSleepDebt(self.recommendedDuration, self.savedSleepDurations)
+        messagebox.showinfo("Dette de Sommeil",
+                            f"Dette de sommeil à rattraper : {debtResult} heures de sommeil\n{message}")
+
+    def showChart(self):
+        fig = showNightsCharts(self.savedSleepDurations, self.dates, self.recommendedDuration, self.age, self.name)
+        chart_window = tk.Toplevel(self.root)
+        chart_window.title("Graphique de Sommeil")
+        canvas = FigureCanvasTkAgg(fig, master=chart_window)
+        canvas.draw()
+        canvas.get_tk_widget().pack(fill=tk.BOTH, expand=True)
+
+
+if __name__ == "__main__":
+    root = tk.Tk()
+    app = SleepTrackerApp(root)
+    root.mainloop()
